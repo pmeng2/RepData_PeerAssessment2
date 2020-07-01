@@ -1,0 +1,178 @@
+---
+title: "Reproducible Research / Week 4 / Course Project 2"
+author: "Pingping"
+date: "6/28/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## INTRODUCTION
+Storms and other severe weather events can cause both public health and economic problems for communities and municipalities. Many severe events can result in fatalities, injuries, and property damage, and preventing such outcomes to the extent possible is a key concern.
+
+This project involves exploring the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.
+
+## SYNOPSIS
+1. This is an exploration of the U.S. National Oceanic and Atmospheric Administration’s (NOAA) storm database.
+2. The FATALITIES and INJURIES variables are selected to evaluate which event is the most harmful with respect to public health.
+3. The PROPDMG, PRODMGEXP, CROPDMG and CROPDMGEXP variables are selected to evaluate which event is the most harmful with respect to economic consequences.
+4. The PROPDMG and PRODMGEXP variables are processed into one variable showing the final property damage.
+5. The CORPDMG and CROPDMGEXP variables are processed into one variable showing the final crop damage.
+6. Across the United States, Tornados are the most harmful events with respect to population health, creating the largest number of fatalities and injuries.
+7. Across the United States, Floods have the greatest economic consequences with repect to property damage; Droughts have the greatest economic consequences with repect to crop damage.
+
+## DATA PROCESSING
+### Install Packages
+```{r install packages, message = FALSE, warning= FALSE}
+library(rmarkdown)
+library(R.utils)
+library(knitr)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+```
+### Download and read the data
+```{r download data}
+if(!file.exists("C:/Users/pmeng2/Documents/R.Studio/Reproducible_research/RepData_PeerAssessment2/stormData.csv.bz2"))
+        {
+        download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", destfile="C:/Users/pmeng2/Documents/R.Studio/Reproducible_research/RepData_PeerAssessment2/stormData.csv.bz2")
+        }
+```
+```{r unzip and read the data}
+if(!file.exists("C:/Users/pmeng2/Documents/R.Studio/Reproducible_research/RepData_PeerAssessment2/stormdata.csv"))
+        {
+        bunzip2("stormData.csv.bz2","stormdata.csv",remove=F)
+        }
+stormdata <- read.csv("stormdata.csv", header = T)
+str(stormdata)
+```
+### Queation 1. Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+1.1 First, select the variables that are needed to answer this question.
+```{r select the data }
+healthdata <-  select(stormdata, EVTYPE, FATALITIES, INJURIES)
+```
+1.2 Get the sum fatalities and injuries for each events
+```{r sum fatalities and injuries}
+sumfatal <- as.vector(tapply(healthdata$FATALITIES, healthdata$EVTYPE, sum))
+suminjur <- as.vector(tapply(healthdata$INJURIES, healthdata$EVTYPE, sum))
+events <- levels(healthdata$EVTYPE)
+sumhealth <- data.frame(events, sumfatal, suminjur)
+colnames(sumhealth) <- c("event", "fatalities","injuries")
+```
+1.3 arrange the dataframe in the desc order, get the top 10 events 
+```{r arrange }
+fatality10 <- arrange(sumhealth, desc(fatalities))[1:10, 1:2]
+injury10 <- arrange(sumhealth, desc(injuries))[1:10, c(1,3)]
+topfatality <- fatality10 [1,1]
+topinjury <- injury10 [1,1]
+```
+
+### Question 2. Across the United States, which types of events have the greatest economic consequences?
+2.1 First, select the variables that are needed to answer this question.
+```{r select the data related }
+dmgdata <-  select(stormdata, EVTYPE, PROPDMG:CROPDMGEXP)
+```
+2.2 combine the PRODMG and PRODMGEXP, CROPDMG and CROPDMGEXP columns
+```{r combine the columns}
+levels(dmgdata$PROPDMGEXP)
+levels(dmgdata$CROPDMGEXP)
+dmgdata <- mutate(dmgdata,PROPDMGEXP = as.character(PROPDMGEXP), CROPDMGEXP = as.character(CROPDMGEXP))
+dmgdata$PROPDMGEXP[dmgdata$PROPDMGEXP == ""] <- 1
+dmgdata$PROPDMGEXP[dmgdata$PROPDMGEXP == "0"] <- 1
+dmgdata$PROPDMGEXP[dmgdata$PROPDMGEXP == "1"] <- 10
+dmgdata$PROPDMGEXP[dmgdata$PROPDMGEXP == "2"] <- 100
+dmgdata$PROPDMGEXP[dmgdata$PROPDMGEXP == "3"] <- 1000
+dmgdata$PROPDMGEXP[dmgdata$PROPDMGEXP == "4"] <- 10000
+dmgdata$PROPDMGEXP[dmgdata$PROPDMGEXP == "5"] <- 100000
+dmgdata$PROPDMGEXP[dmgdata$PROPDMGEXP == "6"] <- 1000000
+dmgdata$PROPDMGEXP[dmgdata$PROPDMGEXP == "7"] <- 10000000
+dmgdata$PROPDMGEXP[dmgdata$PROPDMGEXP == "8"] <- 100000000
+dmgdata$PROPDMGEXP[dmgdata$PROPDMGEXP == "B"] <- 1000000000
+dmgdata$PROPDMGEXP[dmgdata$PROPDMGEXP == "h"] <- 100
+dmgdata$PROPDMGEXP[dmgdata$PROPDMGEXP == "H"] <- 100
+dmgdata$PROPDMGEXP[dmgdata$PROPDMGEXP == "K"] <- 1000
+dmgdata$PROPDMGEXP[dmgdata$PROPDMGEXP == "m"] <- 1000000
+dmgdata$PROPDMGEXP[dmgdata$PROPDMGEXP == "M"] <- 1000000
+dmgdata$PROPDMGEXP[dmgdata$PROPDMGEXP == "-"] <- 0
+dmgdata$PROPDMGEXP[dmgdata$PROPDMGEXP == "+"] <- 0
+dmgdata$PROPDMGEXP[dmgdata$PROPDMGEXP == "?"] <- 0
+
+dmgdata$CROPDMGEXP[dmgdata$CROPDMGEXP == ""] <- 1
+dmgdata$CROPDMGEXP[dmgdata$CROPDMGEXP == "0"] <- 1
+dmgdata$CROPDMGEXP[dmgdata$CROPDMGEXP == "2"] <- 100
+dmgdata$CROPDMGEXP[dmgdata$CROPDMGEXP == "k"] <- 1000
+dmgdata$CROPDMGEXP[dmgdata$CROPDMGEXP == "K"] <- 1000
+dmgdata$CROPDMGEXP[dmgdata$CROPDMGEXP == "m"] <- 1000000
+dmgdata$CROPDMGEXP[dmgdata$CROPDMGEXP == "M"] <- 1000000
+dmgdata$CROPDMGEXP[dmgdata$CROPDMGEXP == "B"] <- 1000000000
+dmgdata$CROPDMGEXP[dmgdata$CROPDMGEXP == "?"] <- 0
+
+dmgdata1 <- mutate(dmgdata,PROPDMGEXP = as.numeric(PROPDMGEXP), CROPDMGEXP = as.numeric(CROPDMGEXP))
+dmgdata2 <- mutate(dmgdata1, PROPDMG = PROPDMG*PROPDMGEXP)
+dmgdata3 <- mutate(dmgdata2, CROPDMG = CROPDMG*CROPDMGEXP)
+
+DMGDATA <- select(dmgdata3, EVTYPE, PROPDMG, CROPDMG)
+```
+2.3 Get the sum damage for each events
+```{r sum propdamages and cropdamages}
+sumpropdmg <- as.vector(tapply(DMGDATA$PROPDMG, DMGDATA$EVTYPE, sum))
+sumcropdmg <- as.vector(tapply(DMGDATA$CROPDMG, DMGDATA$EVTYPE, sum))
+events <- levels(DMGDATA$EVTYPE)
+DMGSUM <- data.frame(events, sumpropdmg, sumcropdmg)
+colnames(DMGSUM) <- c("event", "propdmg","cropdmg")
+```
+2.4 arrange the dataframe in the desc order, get the top 10 events 
+```{r arrange the data}
+propdmg10 <- arrange(DMGSUM, desc(propdmg))[1:10, 1:2]
+cropdmg10 <- arrange(DMGSUM, desc(cropdmg))[1:10, c(1,3)]
+toppropdmg <- propdmg10 [1,1]
+topcropdmg <- cropdmg10 [1,1]
+```
+
+## RESULTS
+### Harm to Public Health
+1. The top10 and top 1 harmful events with repect to fatalities is :
+```{r}
+fatality10
+topfatality
+```
+2. The top10 and top 1 harmful events with repect to injuries is :
+```{r}
+injury10
+topinjury
+```
+3. Making the plots of the top 10 fatalities and top 10 injuries
+```{r making plots1}
+par(mfrow=c(1,2),mar=c(10,3,3,2))
+barplot(fatality10$fatalities, names.arg = fatality10$event, las = 2, ylab = "Fatalities", main = "Top 10 Fatalities Events")
+barplot(injury10$injuries, names.arg = injury10$event, las = 2, ylab = "Injuries", main = "Top 10 Injuries Events")
+```
+
+### Harm to Economics
+1. The top10 and top1 harmful events with repect to the property damage.
+```{r}
+propdmg10
+toppropdmg
+```
+2. The top10 and top1 harmful events with repect to the crop damage.
+```{r}
+cropdmg10
+topcropdmg
+```
+3. Making the plots of the top 10 property damage and top 10 crop damage events
+```{r}
+par(mfrow=c(1,2),mar=c(10,3,3,2))
+barplot(propdmg10$propdmg, names.arg = propdmg10$event, las = 2, ylab = "Property Damage", main = "Top 10 Property Damege Events")
+barplot(cropdmg10$cropdmg, names.arg = cropdmg10$event, las = 2, ylab = "Crop Damage", main = "Top 10 Crop Damage Evenets")
+```
+
+## SUMMARY
+1. Across the United States, Tornados are the most harmful events with respect to population health, creating the largest number of fatalities and injuries.
+2. Across the United States, Floods have the greatest economic consequences with repect to property damage; Droughts have the greatest economic consequences with repect to crop damage.
+
+
+
+
+
